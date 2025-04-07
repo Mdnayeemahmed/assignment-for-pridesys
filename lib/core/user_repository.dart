@@ -10,16 +10,14 @@ class UserRepository {
 
   Future<void> saveUser(User user) async {
     try {
-      // Get current FCM token
       String? fcmToken = await _firebaseMessaging.getToken();
       _currentFcmToken = fcmToken;
 
       if (fcmToken != null) {
-        // Update Firestore with only the current token (not an array)
         await _firestore.collection('users').doc(user.uid).set({
           'email': user.email,
           'createdAt': FieldValue.serverTimestamp(),
-          'fcmToken': fcmToken,  // Single token field instead of array
+          'fcmToken': fcmToken,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       } else {
@@ -31,7 +29,6 @@ class UserRepository {
         }, SetOptions(merge: true));
       }
 
-      // Set up token refresh listener
       _firebaseMessaging.onTokenRefresh.listen((newToken) {
         _currentFcmToken = newToken;
         _updateUserToken(user.uid, newToken);
@@ -58,14 +55,14 @@ class UserRepository {
 
   Future<void> _updateUserToken(String userId, String newToken) async {
     await _firestore.collection('users').doc(userId).update({
-      'fcmToken': newToken,  // Update single token field
+      'fcmToken': newToken,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
   Future<void> removeToken(String userId) async {
     await _firestore.collection('users').doc(userId).update({
-      'fcmToken': FieldValue.delete(),  // Remove the token field
+      'fcmToken': FieldValue.delete(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }

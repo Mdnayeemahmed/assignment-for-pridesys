@@ -33,7 +33,6 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    // _isLogin and _isLoading should not be disposed here
     super.dispose();
   }
 
@@ -65,8 +64,6 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
         }
       }
 
-      // On success, navigate to home screen
-      // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
 
     } on FirebaseAuthException catch (e) {
       _showAuthError(e);

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:http/http.dart' as http;
 
@@ -10,6 +11,7 @@ class PushNotificationService {
     final get = get_server_key();
     String servertoken = await get.server_token();
 
+    log(tokens.toString());
     final url = Uri.parse('https://fcm.googleapis.com/v1/projects/assignment-6b580/messages:send');
 
     try {
@@ -27,7 +29,7 @@ class PushNotificationService {
                 "body": body,
                 "title": title,
               },
-              "data": {"story_id": "story_12345"} // Example data, adjust as necessary
+              "data": {"id": "12345"}
             }
           }),
         );

@@ -1,7 +1,7 @@
 import 'dart:developer';
 
 import 'package:assignment/data/services/push_notification_services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -14,7 +14,6 @@ class NotificationService {
 
   Future<void> initialize() async {
     await _requestPermissions();
-    await _setupFCMToken();
     await _initLocalNotifications();
     await _setupInteractedMessage();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -31,34 +30,6 @@ class NotificationService {
     print('Notification permission status: ${settings.authorizationStatus}');
   }
 
-  Future<void> _setupFCMToken() async {
-    try {
-      String? token = await _firebaseMessaging.getToken();
-      if (token != null) {
-        print("FCM Token: $token");
-        await _saveTokenToFirestore(token);
-      }
-
-      // Listen for token refresh
-      _firebaseMessaging.onTokenRefresh.listen(_saveTokenToFirestore);
-    } catch (e) {
-      print('Error getting FCM token: $e');
-    }
-  }
-
-  Future<void> _saveTokenToFirestore(String token) async {
-    try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId != null) {
-        await _firestore.collection('users').doc(userId).update({
-          'fcmToken': FieldValue.arrayUnion([token]),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      }
-    } catch (e) {
-      print('Error saving FCM token: $e');
-    }
-  }
 
   Future<void> _initLocalNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -76,26 +47,21 @@ class NotificationService {
   }
 
   Future<void> _setupInteractedMessage() async {
-    // Get any messages which caused the application to open from a terminated state
     RemoteMessage? initialMessage =
     await _firebaseMessaging.getInitialMessage();
     if (initialMessage != null) {
       _handleMessage(initialMessage);
     }
 
-    // Also handle any interaction when the app is in the background
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
 
-    // Handle foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       _showLocalNotification(message);
     });
   }
 
   void _handleMessage(RemoteMessage message) {
-    // Handle the message when app is opened from notification
     print('Message opened: ${message.notification?.title}');
-    // You can navigate to specific screen based on message data
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
@@ -120,7 +86,6 @@ class NotificationService {
     );
   }
 
-  // Send push notification to all users (except excluded user)
   Future<void> sendNotificationToAllUsers(
       String title,
       String body,
@@ -128,16 +93,19 @@ class NotificationService {
       Map<String, String>? data,
       ) async {
     try {
-      // Get all FCM tokens from Firestore (excluding the specified user)
       final usersSnapshot = await _firestore.collection('users').get();
       final List<String> tokens = [];
-      log(tokens.toString());
 
       for (var doc in usersSnapshot.docs) {
         if (excludeUserId == null || doc.id != excludeUserId) {
           final userData = doc.data();
           if (userData['fcmToken'] != null) {
-            tokens.addAll((userData['fcmToken'] as List).cast<String>());
+            final fcmToken = userData['fcmToken'];
+            if (fcmToken is String) {
+              tokens.add(fcmToken);
+            } else if (fcmToken is List) {
+              tokens.addAll(fcmToken.cast<String>());
+            }
           }
         }
       }
@@ -155,7 +123,6 @@ class NotificationService {
   }
 }
 
-// Background message handler
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   print('Handling a background message: ${message.messageId}');
