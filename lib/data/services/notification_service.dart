@@ -1,6 +1,7 @@
 import 'dart:developer';
 
-import 'package:assignment/serverkey.dart';
+import 'package:assignment/data/services/push_notification_services.dart';
+import 'package:assignment/data/services/serverkey.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -182,43 +183,4 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 
 
-class PushNotificationService {
-
-  Future<void> sendPushNotification(List<String> tokens, String title, String body) async {
-    final get = get_server_key();
-    String servertoken = await get.server_token();
-
-    final url = Uri.parse('https://fcm.googleapis.com/v1/projects/assignment-6b580/messages:send');
-
-    try {
-      for (String token in tokens) {
-        final response = await http.post(
-          url,
-          headers: <String, String>{
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $servertoken',
-          },
-          body: jsonEncode(<String, dynamic>{
-            "message": {
-              "token": token, // Using token for each user
-              "notification": {
-                "body": body,
-                "title": title,
-              },
-              "data": {"story_id": "story_12345"} // Example data, adjust as necessary
-            }
-          }),
-        );
-
-        if (response.statusCode == 200) {
-          print('Notification sent successfully to $token!');
-        } else {
-          print('Failed to send notification to $token: ${response.body}');
-        }
-      }
-    } catch (e) {
-      print('Error sending notification: $e');
-    }
-  }
-}
 
