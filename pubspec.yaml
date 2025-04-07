@@ -43,6 +43,8 @@ dependencies:
   flutter_local_notifications:
   http:
   googleapis_auth:
+  get_it:
+  intl:
 dev_dependencies:
   flutter_test:
     sdk: flutter

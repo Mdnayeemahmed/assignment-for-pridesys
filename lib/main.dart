@@ -3,8 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'data/services/auth_service.dart';
+import 'data/services/service_locator.dart';
 import 'presentation/ui/auth/login_register_screen.dart';
-import 'user_repository.dart';
+import 'core/user_repository.dart';
 import 'data/services/notification_service.dart';
 
 
@@ -26,7 +27,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Firebase Auth Demo',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: StreamBuilder<User?>(
         stream: _authService.user,

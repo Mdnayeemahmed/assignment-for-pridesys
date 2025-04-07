@@ -1,33 +1,21 @@
 import 'dart:developer';
 
 import 'package:assignment/data/services/push_notification_services.dart';
-import 'package:assignment/data/services/serverkey.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 class NotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
   FlutterLocalNotificationsPlugin();
 
-  // Initialize the notification service
   Future<void> initialize() async {
-    // Request notification permissions
     await _requestPermissions();
-
-    // Get and save the FCM token
     await _setupFCMToken();
-
-    // Initialize local notifications (for when app is in foreground)
     await _initLocalNotifications();
-
-    // Set up message handlers
     await _setupInteractedMessage();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   }
@@ -63,7 +51,7 @@ class NotificationService {
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId != null) {
         await _firestore.collection('users').doc(userId).update({
-          'fcmTokens': FieldValue.arrayUnion([token]),
+          'fcmToken': FieldValue.arrayUnion([token]),
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
@@ -148,8 +136,8 @@ class NotificationService {
       for (var doc in usersSnapshot.docs) {
         if (excludeUserId == null || doc.id != excludeUserId) {
           final userData = doc.data();
-          if (userData['fcmTokens'] != null) {
-            tokens.addAll((userData['fcmTokens'] as List).cast<String>());
+          if (userData['fcmToken'] != null) {
+            tokens.addAll((userData['fcmToken'] as List).cast<String>());
           }
         }
       }
@@ -158,14 +146,9 @@ class NotificationService {
         print('No tokens to send notifications to');
         return;
       }
-
-      // In a real app, you would call a Cloud Function to send notifications
-      // to multiple devices. Here we simulate it for the demo.
       print('Would send notification to ${tokens.length} devices');
       await PushNotificationService().sendPushNotification(tokens, title, body);
 
-      // For actual implementation, you would need a Cloud Function like this:
-      // https://firebase.google.com/docs/cloud-messaging/send-message
     } catch (e) {
       print('Error sending notifications: $e');
     }
@@ -176,9 +159,6 @@ class NotificationService {
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   print('Handling a background message: ${message.messageId}');
-
-  // You can show a notification here if needed
-  // or process the message data
 }
 
 

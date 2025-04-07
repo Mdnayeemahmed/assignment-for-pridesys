@@ -2,24 +2,38 @@ import 'package:assignment/data/models/user_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+
 class UserRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  String? _currentFcmToken;
 
   Future<void> saveUser(User user) async {
     try {
-      // Get FCM token
+      // Get current FCM token
       String? fcmToken = await _firebaseMessaging.getToken();
+      _currentFcmToken = fcmToken;
 
-      await _firestore.collection('users').doc(user.uid).set({
-        'email': user.email,
-        'createdAt': FieldValue.serverTimestamp(),
-        'fcmTokens': fcmToken != null ? FieldValue.arrayUnion([fcmToken]) : [],
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      if (fcmToken != null) {
+        // Update Firestore with only the current token (not an array)
+        await _firestore.collection('users').doc(user.uid).set({
+          'email': user.email,
+          'createdAt': FieldValue.serverTimestamp(),
+          'fcmToken': fcmToken,  // Single token field instead of array
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } else {
+        // If no token, still save other user data
+        await _firestore.collection('users').doc(user.uid).set({
+          'email': user.email,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
 
       // Set up token refresh listener
       _firebaseMessaging.onTokenRefresh.listen((newToken) {
+        _currentFcmToken = newToken;
         _updateUserToken(user.uid, newToken);
       });
     } catch (e) {
@@ -28,19 +42,34 @@ class UserRepository {
     }
   }
 
+  Future<void> checkAndUpdateFcmToken(String userId) async {
+    try {
+      String? currentToken = await _firebaseMessaging.getToken();
+
+      if (currentToken != null && currentToken != _currentFcmToken) {
+        _currentFcmToken = currentToken;
+        await _updateUserToken(userId, currentToken);
+      }
+    } catch (e) {
+      print('Error checking FCM token: $e');
+      rethrow;
+    }
+  }
+
   Future<void> _updateUserToken(String userId, String newToken) async {
     await _firestore.collection('users').doc(userId).update({
-      'fcmTokens': FieldValue.arrayUnion([newToken]),
+      'fcmToken': newToken,  // Update single token field
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
-  Future<void> removeToken(String userId, String token) async {
+  Future<void> removeToken(String userId) async {
     await _firestore.collection('users').doc(userId).update({
-      'fcmTokens': FieldValue.arrayRemove([token]),
+      'fcmToken': FieldValue.delete(),  // Remove the token field
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
+
   Stream<List<AppUser>> getUsers() {
     return _firestore.collection('users').snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
@@ -52,5 +81,4 @@ class UserRepository {
       }).toList();
     });
   }
-
 }
